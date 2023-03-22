@@ -1,15 +1,20 @@
 # gristBox
 
 ## What
-This widget displays a grid of numbers which can be used to fill or remove items from a choice  list.
+This [Grist](getgrist.com) widget displays a grid of numbers which can be used to fill or remove items from a choice  list.
 
 We use this to fill "positions in a box".
 
+It works "two ways" you can either click a postion in the grid, or just change the
+choice list as normal.
+
+
+![gridPut](/images/gridPut.png)
+![gridGet](/images/gridGet.png)
+
+The grid actually resembles a vial box:
+
 ![The Box](/images/box.jpg)
-
-![The Box](/images/grid.png)
-
-![The Box](/images/position.png)
 
 
 
