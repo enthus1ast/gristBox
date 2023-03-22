@@ -1,7 +1,7 @@
 # gristBox
 
 ## What
-This [Grist](getgrist.com) widget displays a grid of numbers which can be used to fill or remove items from a choice  list.
+This [Grist](https://getgrist.com) widget displays a grid of numbers which can be used to fill or remove items from a choice  list.
 
 We use this to fill "positions in a box".
 
