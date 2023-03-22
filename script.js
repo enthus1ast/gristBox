@@ -2,6 +2,12 @@
 let currentId = -1
 var currentDocument = null
 
+var directions = {
+  "get": "Austragen",
+  "put": "Eintragen"
+}
+
+
 function parseToList(str) {
   if (str == "") {return []}
   let parts = str.split("-")
@@ -65,20 +71,19 @@ async function genGrid(width, height, elem) {
     let tr = document.createElement("tr")
     for (let ww = 0; ww < width; ww++) {
         cnt += 1;
-        // console.log(ww, hh, cnt);
         let td = document.createElement("td");
         td.innerText = cnt;
         td.id = cnt;
         td.classList.add("gridelem")
 
         td.addEventListener("click", function(ev) {
-          console.log("clicked:", ev.target);
+          // console.log("clicked:", ev.target);
 
           let wasAdded
-          if (currentDocument.Eintragen_Austragen == "Eintragen") {
+          if (currentDocument.Eintragen_Austragen == directions["put"]) {
             wasAdded = toggleClass(ev.target, "insert");
           }
-          if (currentDocument.Eintragen_Austragen == "Austragen") {
+          if (currentDocument.Eintragen_Austragen == directions["get"]) {
             wasAdded = toggleClass(ev.target, "remove");
           }
 
@@ -95,12 +100,6 @@ async function genGrid(width, height, elem) {
             let pdic = listToDict(list)
             grist.getTable().updateRecords({"Position": [pdic]},[currentDocument.id])
           }
-          // let payload = {}
-          // payload["Position"] = currentDocument.Position
-          // payload["id"] = currentDocument.id
-          // console.log(payload)
-          // grist.selectedTable.updateRecords(payload, [currentDocument.id])
-          // grist.selectedTable.updateRecords({"Position": [["1", "2"]]}, [1])
         })
 
         tr.appendChild(td);
@@ -117,7 +116,6 @@ async function genGrid(width, height, elem) {
 
 
 function wipeClass(classname) {
-  // let objs = document.getElementsByClassName(classname)
   let objs = document.querySelectorAll('*');
   for (let index = 0; index < objs.length; index++) {
     const element = objs[index];
@@ -132,11 +130,10 @@ function colorTheGrid(recordRaw) {
     for (let index = 0; index < recordRaw.Position.length; index++) {
       const element = recordRaw.Position[index];
       obj = document.getElementById(element)
-      // console.log(element, obj)
-      if(recordRaw.Eintragen_Austragen == "Eintragen") {
+      if(recordRaw.Eintragen_Austragen == directions["put"]) {
         obj.classList.add("insert");
       }
-      if(recordRaw.Eintragen_Austragen == "Austragen") {
+      if(recordRaw.Eintragen_Austragen == directions["get"]) {
         obj.classList.add("remove");
       }
     }
@@ -144,30 +141,79 @@ function colorTheGrid(recordRaw) {
 }
 
 function gristOnRecordHandler(recordRaw, mappings) {
-  console.log(recordRaw)
+  let record = grist.mapColumnNames(recordRaw);
+
+
   if (currentDocument != null) {
-    if ((recordRaw.Eingetragen != currentDocument.Eingetragen) || (recordRaw.Ausgetragen != currentDocument.Ausgetragen)) {
+    if ((record.Eingetragen != currentDocument.Eingetragen) || (record.Ausgetragen != currentDocument.Ausgetragen)) {
       changeClass()
     }
   }
-  currentDocument = recordRaw;
-  currentId = recordRaw.id
-  colorTheGrid(recordRaw)
+  currentDocument = record;
+  currentId = record.id
+  colorTheGrid(record)
 }
 
-function gristOnRecordsHandler(records, mappings) {
+function gristOnRecordsHandler(records, mappings) {}
+
+function gristOnOptionsHandler(options, interaction) {
+  // console.log("OPTIONS:");
+  // console.log(options);
+  // console.log(interaction);
+  // grist.setOption("put", "Eintragen");
+  // grist.setOption("get", "Austragen");
 
 }
+
+
+function getDirectionVerbs() {
+  // Get the direction verbs from the query url
+  const queryString = window.location.search;
+  const urlParams = new URLSearchParams(queryString);
+  if (urlParams.has("get")) {
+    directions["get"] = urlParams.get('get')
+  }
+  if (urlParams.has("put")) {
+    directions["put"] = urlParams.get('put')
+  }
+}
+
 
 function main() {
   // The main function that gets executed when the dom is ready
-  // Get the bgimage from the query params
+
+  getDirectionVerbs()
+
+
   genGrid(9, 9, document.getElementById("container"))
   grist.ready({
       requiredAccess: 'full',
+      columns: [
+        "Eintragen_Austragen", // the direction
+        {
+          name: "Position",
+          type: "ChoiceList"
+        }, // the position choice list
+        // "Eingetragen", // what are these?
+        // "Ausgetragen" // what are these?
+      ],
+      onEditOptions: function() {
+        // alert("Options");
+        // let put = prompt("Value for put:")
+        // grist.setOption("put", put);
+
+        // let get = prompt("Value for get:")
+        // grist.setOption("get", get);
+      },
+      // opasdtions: {
+      //   "put": "Eintragen",
+      //   "get": "Austragen"
+      // }
     });
   grist.onRecord(gristOnRecordHandler);
   grist.onRecords(gristOnRecordsHandler);
+  grist.onOptions(gristOnOptionsHandler);
+
 
   // Fill positon button and parser
   function fillPositionWithParser() {
