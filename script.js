@@ -1,10 +1,14 @@
 // maybe this works withouth globals
 let currentId = -1
 var currentDocument = null
-
+var currentMapping = null
 var directions = {
-  "get": "Austragen",
-  "put": "Eintragen"
+  "get": "Get",
+  "put": "Put"
+}
+var gridDimensions = {
+  "width": 9,
+  "height": 9
 }
 
 
@@ -36,6 +40,7 @@ function toggleClass(elem, classname) {
   }
 }
 
+
 function changeClass(oldClassName, newClassName) {
   let objs = document.getElementsByClassName("gridelem");
   for (let index = 0; index < objs.length; index++) {
@@ -47,6 +52,7 @@ function changeClass(oldClassName, newClassName) {
   }
 }
 
+
 function listToDict(lst) {
   let pdic = {}
   for (let index = 0; index < lst.length; index++) {
@@ -56,15 +62,16 @@ function listToDict(lst) {
   return pdic
 }
 
+
 function removeElement(lst, value) {
   let index = lst.indexOf(value);
   if (index == -1){return lst} // do nothing if the element was not found
   return lst.splice(index, 1);
 }
 
+
 async function genGrid(width, height, elem) {
   let cnt = 0
-
   let table = document.createElement("table");
 
   for (let hh = 0; hh < height; hh++) {
@@ -75,31 +82,24 @@ async function genGrid(width, height, elem) {
         td.innerText = cnt;
         td.id = cnt;
         td.classList.add("gridelem")
-
         td.addEventListener("click", function(ev) {
-          // console.log("clicked:", ev.target);
-
           let wasAdded
-          if (currentDocument.Eintragen_Austragen == directions["put"]) {
+          if (currentDocument.direction == directions["put"]) {
             wasAdded = toggleClass(ev.target, "insert");
           }
-          if (currentDocument.Eintragen_Austragen == directions["get"]) {
+          if (currentDocument.direction == directions["get"]) {
             wasAdded = toggleClass(ev.target, "remove");
           }
 
           let list = currentDocument.Position || [] // if list not there create
           if (wasAdded) {
             list.push(String(ev.target.id))
-            // TODO it is strange that it needs to be a dict, fix this when a better way is known
-            let pdic = listToDict(list)
-            grist.getTable().updateRecords({"Position": [pdic]},[currentDocument.id])
           } else {
             removeElement(list, String(ev.target.id))
-            // list.push(String(ev.target.id))
-            // TODO it is strange that it needs to be a dict, fix this when a better way is known
-            let pdic = listToDict(list)
-            grist.getTable().updateRecords({"Position": [pdic]},[currentDocument.id])
           }
+
+          fillPosition(list) // Update the table
+
         })
 
         tr.appendChild(td);
@@ -109,10 +109,7 @@ async function genGrid(width, height, elem) {
   }
 
   elem.appendChild(table)
-
 }
-
-
 
 
 function wipeClass(classname) {
@@ -123,6 +120,7 @@ function wipeClass(classname) {
   }
 }
 
+
 function colorTheGrid(recordRaw) {
   wipeClass("insert")
   wipeClass("remove")
@@ -130,43 +128,36 @@ function colorTheGrid(recordRaw) {
     for (let index = 0; index < recordRaw.Position.length; index++) {
       const element = recordRaw.Position[index];
       obj = document.getElementById(element)
-      if(recordRaw.Eintragen_Austragen == directions["put"]) {
+      if(recordRaw.direction == directions["put"]) {
         obj.classList.add("insert");
       }
-      if(recordRaw.Eintragen_Austragen == directions["get"]) {
+      if(recordRaw.direction == directions["get"]) {
         obj.classList.add("remove");
       }
     }
   }
 }
 
+
 function gristOnRecordHandler(recordRaw, mappings) {
   let record = grist.mapColumnNames(recordRaw);
-
-
   if (currentDocument != null) {
     if ((record.Eingetragen != currentDocument.Eingetragen) || (record.Ausgetragen != currentDocument.Ausgetragen)) {
       changeClass()
     }
   }
   currentDocument = record;
+  currentMapping = mappings;
   currentId = record.id
   colorTheGrid(record)
 }
 
 function gristOnRecordsHandler(records, mappings) {}
 
-function gristOnOptionsHandler(options, interaction) {
-  // console.log("OPTIONS:");
-  // console.log(options);
-  // console.log(interaction);
-  // grist.setOption("put", "Eintragen");
-  // grist.setOption("get", "Austragen");
-
-}
+function gristOnOptionsHandler(options, interaction) {}
 
 
-function getDirectionVerbs() {
+function getQueryParams() {
   // Get the direction verbs from the query url
   const queryString = window.location.search;
   const urlParams = new URLSearchParams(queryString);
@@ -176,39 +167,43 @@ function getDirectionVerbs() {
   if (urlParams.has("put")) {
     directions["put"] = urlParams.get('put')
   }
+  if (urlParams.has("width")) {
+    gridDimensions["width"] = urlParams.get('width')
+  }
+  if (urlParams.has("height")) {
+    gridDimensions["height"] = urlParams.get('height')
+  }
 }
 
+function fillPosition(list) {
+  // Update the column that is mapped to position with entries from list
+  let fields = {}
+  fields[currentMapping["Position"]] =  ["L"].concat(list)
+  grist.selectedTable.update({
+    id: currentDocument.id,
+    fields: fields
+  })
+}
 
 function main() {
   // The main function that gets executed when the dom is ready
-
-  getDirectionVerbs()
-
-
-  genGrid(9, 9, document.getElementById("container"))
+  getQueryParams()
+  genGrid(
+    gridDimensions["width"],
+    gridDimensions["height"],
+    document.getElementById("container")
+  )
   grist.ready({
       requiredAccess: 'full',
       columns: [
-        "Eintragen_Austragen", // the direction
+        "direction", // the direction
         {
           name: "Position",
           type: "ChoiceList"
         }, // the position choice list
-        // "Eingetragen", // what are these?
-        // "Ausgetragen" // what are these?
       ],
       onEditOptions: function() {
-        // alert("Options");
-        // let put = prompt("Value for put:")
-        // grist.setOption("put", put);
-
-        // let get = prompt("Value for get:")
-        // grist.setOption("get", get);
       },
-      // opasdtions: {
-      //   "put": "Eintragen",
-      //   "get": "Austragen"
-      // }
     });
   grist.onRecord(gristOnRecordHandler);
   grist.onRecords(gristOnRecordsHandler);
@@ -219,8 +214,7 @@ function main() {
   function fillPositionWithParser() {
     list = parseToList(document.getElementById("fillpositioninput").value)
     if(list == []){return}
-    let pdic = listToDict(list)
-    grist.getTable().updateRecords({"Position": [pdic]},[currentDocument.id])
+    fillPosition(list)
   }
 
   document.getElementById("fillpositionbutton").addEventListener("click", function (ev) {
