@@ -23,7 +23,7 @@ The grid actually resembles a vial box:
 Mapping   | description
 ----------|-------------
 direction | If something is filled or removed from the choice list, must match the query param "Put" or "Get"
-direction | the choice list that is filled.
+position | the choice list that is filled.
 
 ## settings / query params
 
